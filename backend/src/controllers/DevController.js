@@ -13,39 +13,56 @@ class DevControler {
 
     let dev = await Dev.findOne({ github_username });
 
-    if (!dev) {
-      const apiResponse = await axios.get(
-        `https://api.github.com/users/${github_username}`
-      );
-
-      const { name = login, avatar_url, bio } = apiResponse.data;
-
-      const techsArray = parseStringAsArray(techs);
-
-      const location = {
-        type: "Point",
-        coordinates: [longitude, latitude]
-      };
-
-      const dev = await Dev.create({
-        github_username,
-        name,
-        avatar_url,
-        bio,
-        techs: techsArray,
-        location
-      });
+    if (dev) {
+      return response.json({ message: "This user already exists" });
     }
+
+    const apiResponse = await axios.get(
+      `https://api.github.com/users/${github_username}`
+    );
+
+    const { name = login, avatar_url, bio } = apiResponse.data;
+
+    const techsArray = parseStringAsArray(techs);
+
+    const location = {
+      type: "Point",
+      coordinates: [longitude, latitude]
+    };
+
+    dev = await Dev.create({
+      github_username,
+      name,
+      avatar_url,
+      bio,
+      techs: techsArray,
+      location
+    });
 
     return response.json(dev);
   }
 
   async update(request, response) {
-    // atualizar nome, avatar, bio, localizacao, techs
-    // não atualizar github username
+    const data = request.body;
+    delete data.github_username;
+
+    const techsArray = parseStringAsArray(data.techs);
+
+    const dev = await Dev.findByIdAndUpdate(
+      request.params.id,
+      { ...data, techs: techsArray },
+      {
+        new: true
+      }
+    );
+
+    return response.json(dev);
   }
 
-  async destroy(request, response) {}
+  async destroy(request, response) {
+    await Dev.findByIdAndDelete(request.params.id);
+    return response.json({ message: "User deleted" });
+  }
 }
 
 module.exports = new DevControler();
